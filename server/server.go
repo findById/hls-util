@@ -108,7 +108,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	md := md5.New().Sum([]byte(source))
 	key := hex.EncodeToString(md);
 
-	os.MkdirAll(*targetDir + "/" + key, 0666)
+	os.MkdirAll(*targetDir + "/" + key, 0777)
 
 	if isExists(*targetDir + "/" + key + "/success") {
 		log.Println("already exists")
