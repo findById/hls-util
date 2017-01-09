@@ -188,5 +188,5 @@ func isExists(path string) bool {
 	if os.IsNotExist(err) {
 		return false
 	}
-	return false
+	return true
 }
