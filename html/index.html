@@ -25,13 +25,13 @@
         <span class="card-image" data-pattern-id="[repo.name]">
 
         </span>
-        <div class="card-body" >
+        <div class="card-body">
             <span class="card-button" onclick="listDir('[repo.path]')">[repo.name]</span>
         </div>
         <div class="card-meta">
             <span class="meta-info">[repo.mode]</span>
             <span class="meta-info">
-                <span class="card-button" onclick="getPlayList('[repo.path]')" title="HLS流地址">HLS</span>
+                <span class="card-button" onclick="getPlayList('[repo.path]')" title="HLS">HLS</span>
             </span>
             <span class="meta-info">
             <span class="octicon octicon-clock"></span>
@@ -44,16 +44,16 @@
 <script type="text/javascript" language="JavaScript">
 
     function getPlayList(path) {
-        $.get('http://localhost:9090/playlist?type=hls&path=' + path, function(repos){
+        $.get('/playlist?path=' + path, function (repos) {
             console.log(repos);
             if (!repos || repos.statusCode != 200 || !repos.result) {
                 alert(repos.message);
                 return;
             }
-
-            prompt(repos.message, repos.result);
-        }).fail(function(){
-            alert("请求失败");
+            prompt(repos.message, "http://192.168.99.89:8085/target" + repos.result);
+        }).fail(function (e) {
+            console.log(e);
+            alert(e.message);
         });
     }
 
@@ -61,9 +61,9 @@
 
     function backDir() {
         console.log(cPath);
-        var index = cPath.lastIndexOf("/")
+        var index = cPath.lastIndexOf("/");
         if (index >= 0) {
-            listDir(cPath.substring(0, index))
+            listDir(cPath.substring(0, index));
         }
     }
 
@@ -81,13 +81,13 @@
         var repoList = $('.repo-list');
         var list = $('<ul class="clearfix"></ul>');
         var count = 0;
-        $.get('http://localhost:9090/list?path=' + path, function(repos){
+        $.get('/list?path=' + path, function (repos) {
             console.log(repos);
             if (!repos || repos.statusCode != 200 || !repos.result) {
                 repoList.html('<div class="blankslate"><h3>Ooops!</h3><p>Please try again.</p></div>');
                 return;
             }
-            repos.result.forEach(function(repo){
+            repos.result.forEach(function (repo) {
                 if (repo.fork) return;
                 count++;
 
@@ -96,20 +96,20 @@
                 repo.updateTime = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDay();
 
                 var template = $('#template').html();
-                var item = template.replace(/\[(.*?)\]/g, function(){
+                var item = template.replace(/\[(.*?)\]/g, function () {
                     return eval(arguments[1]);
                 });
                 list.append(item);
             });
             repoList.html(list);
             $('.count').html(count);
-        }).fail(function(){
+        }).fail(function () {
             repoList.html('<div class="blankslate"><h3>Ooops!</h3><p>Please try again.</p></div>');
         });
     }
 
-    $(document).ready(function(){
-        listDir("/")
+    $(document).ready(function () {
+        listDir("/");
     });
 </script>
 </body>
