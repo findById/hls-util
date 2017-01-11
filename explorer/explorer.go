@@ -24,6 +24,9 @@ func ListDir(path string) []MediaItem {
 	}
 
 	for _, f := range info {
+		if strings.HasPrefix(f.Name(), ".") {
+			continue
+		}
 		item := MediaItem{}
 
 		item.Path = path + sep + f.Name()
