@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Explorer</title>
+
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+<section class="container">
+    <div style="margin-bottom:5px;">
+        <button onclick="backDir()">Back</button>
+        <span id="path"></span>
+    </div>
+    <div class="repo-list" style="text-align:center;">
+        <div class="blankslate"><h3>Loading...</h3></div>
+    </div>
+</section>
+<div id="template" style="display:none">
+    <li class="item-card">
+        <span class="card-image" data-pattern-id="[repo.name]">
+
+        </span>
+        <div class="card-body" >
+            <span class="card-button" onclick="listDir('[repo.path]')">[repo.name]</span>
+        </div>
+        <div class="card-meta">
+            <span class="meta-info">[repo.mode]</span>
+            <span class="meta-info">
+                <span class="card-button" onclick="getPlayList('[repo.path]')" title="HLS流地址">HLS</span>
+            </span>
+            <span class="meta-info">
+            <span class="octicon octicon-clock"></span>
+            <time datetime="[repo.updateTime]" title="[repo.updateTime]">[repo.updateTime]</time>
+        </span>
+        </div>
+    </li>
+</div>
+<script type="text/javascript" language="JavaScript" src="jquery-3.1.1.min.js"></script>
+<script type="text/javascript" language="JavaScript">
+
+    function getPlayList(path) {
+        $.get('http://localhost:9090/playlist?type=hls&path=' + path, function(repos){
+            console.log(repos);
+            if (!repos || repos.statusCode != 200 || !repos.result) {
+                alert(repos.message);
+                return;
+            }
+
+            prompt(repos.message, repos.result);
+        }).fail(function(){
+            alert("请求失败");
+        });
+    }
+
+    var cPath = "";
+
+    function backDir() {
+        console.log(cPath);
+        var index = cPath.lastIndexOf("/")
+        if (index >= 0) {
+            listDir(cPath.substring(0, index))
+        }
+    }
+
+    function listDir(path) {
+        path = path.replace("//", "/");
+        if (path == "") {
+            path = "/";
+        }
+        cPath = path;
+        $("#path").html(cPath);
+        console.log(cPath);
+        if (path == "#") {
+            return;
+        }
+        var repoList = $('.repo-list');
+        var list = $('<ul class="clearfix"></ul>');
+        var count = 0;
+        $.get('http://localhost:9090/list?path=' + path, function(repos){
+            console.log(repos);
+            if (!repos || repos.statusCode != 200 || !repos.result) {
+                repoList.html('<div class="blankslate"><h3>Ooops!</h3><p>Please try again.</p></div>');
+                return;
+            }
+            repos.result.forEach(function(repo){
+                if (repo.fork) return;
+                count++;
+
+                // repo.path = repo.mode.charAt(0)=="d" ? repo.path : "#"
+                var date = new Date(repo.updateTime);
+                repo.updateTime = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDay();
+
+                var template = $('#template').html();
+                var item = template.replace(/\[(.*?)\]/g, function(){
+                    return eval(arguments[1]);
+                });
+                list.append(item);
+            });
+            repoList.html(list);
+            $('.count').html(count);
+        }).fail(function(){
+            repoList.html('<div class="blankslate"><h3>Ooops!</h3><p>Please try again.</p></div>');
+        });
+    }
+
+    $(document).ready(function(){
+        listDir("/")
+    });
+</script>
+</body>
+</html>
