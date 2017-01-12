@@ -5,22 +5,23 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"errors"
 )
 
 const sep = string(os.PathSeparator)
 
-func ListDir(path string) []MediaItem {
+func ListDir(path string) ([]MediaItem, error) {
 	list := []MediaItem{}
 
 	f, err := os.Stat(path)
 	if err != nil || !f.IsDir() {
-		return list
+		return nil, errors.New("The file not a directory")
 	}
 
 	info, err := ioutil.ReadDir(path)
 	if err != nil {
 		log.Println(err)
-		return list
+		return nil, errors.New("Can't read the directory '" + path + "'")
 	}
 
 	for _, f := range info {
@@ -45,5 +46,5 @@ func ListDir(path string) []MediaItem {
 
 		list = append(list, item)
 	}
-	return list
+	return list, nil
 }

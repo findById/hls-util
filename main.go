@@ -82,7 +82,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 	path = strings.Replace(path, "../", "/", -1)
 	log.Println("list path", path)
-	list := exp.ListDir(*sourceDir + string(os.PathSeparator) + path)
+	list, err := exp.ListDir(*sourceDir + string(os.PathSeparator) + path)
 
 	for i, item := range list {
 
@@ -100,8 +100,13 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	model := make(map[string]interface{})
 	model["result"] = list
-	model["statusCode"] = 200
-	model["message"] = "success"
+	if err != nil {
+		model["statusCode"] = 201
+		model["message"] = err.Error()
+	} else {
+		model["statusCode"] = 200
+		model["message"] = "success"
+	}
 	model["elapsedTime"] = time.Now().Unix() - beginTime
 
 	b, err := json.Marshal(model)

@@ -26,7 +26,7 @@
 
         </span>
         <div class="card-body">
-            <span class="card-button" onclick="listDir('[repo.path]')">[repo.name]</span>
+            <span class="card-button" onclick="readFile('[repo.path]', '[repo.type]')">[repo.name]</span>
         </div>
         <div class="card-meta">
             <span class="meta-info">[repo.mode]</span>
@@ -34,14 +34,24 @@
                 <span class="card-button" onclick="getPlayList('[repo.path]')" title="HLS">HLS</span>
             </span>
             <span class="meta-info">
-            <span class="octicon octicon-clock"></span>
-            <time datetime="[repo.updateTime]" title="[repo.updateTime]">[repo.updateTime]</time>
-        </span>
+                <span class="octicon octicon-clock"></span>
+                <time datetime="[repo.updateTime]" title="[repo.updateTime]">[repo.updateTime]</time>
+            </span>
         </div>
     </li>
 </div>
 <script type="text/javascript" language="JavaScript" src="jquery-3.1.1.min.js"></script>
 <script type="text/javascript" language="JavaScript">
+
+    function readFile(path, type) {
+        if (type == "dir") {
+            listDir(path);
+        } else if (type == "mp4" || type == "avi" || type == "mkv" || type == "rmvb") {
+            getPlayList(path)
+        } else {
+            alert("Unsupported file type.")
+        }
+    }
 
     function getPlayList(path) {
         $.get('/playlist?path=' + path, function (repos) {
@@ -50,20 +60,20 @@
                 alert(repos.message);
                 return;
             }
-            prompt(repos.message, "http://192.168.99.89:8085/target" + repos.result);
+            prompt(repos.message, "http://192.168.99.89:8085/.target" + repos.result);
         }).fail(function (e) {
             console.log(e);
             alert(e.message);
         });
     }
 
-    var cPath = "";
+    var lastPath = "";
 
     function backDir() {
-        console.log(cPath);
-        var index = cPath.lastIndexOf("/");
+        console.log(lastPath);
+        var index = lastPath.lastIndexOf("/");
         if (index >= 0) {
-            listDir(cPath.substring(0, index));
+            listDir(lastPath.substring(0, index));
         }
     }
 
@@ -72,9 +82,9 @@
         if (path == "") {
             path = "/";
         }
-        cPath = path;
-        $("#path").html(cPath);
-        console.log(cPath);
+        lastPath = path;
+        $("#path").html(lastPath);
+        console.log(lastPath);
         if (path == "#") {
             return;
         }
@@ -84,14 +94,14 @@
         $.get('/list?path=' + path, function (repos) {
             console.log(repos);
             if (!repos || repos.statusCode != 200 || !repos.result) {
-                repoList.html('<div class="blankslate"><h3>Ooops!</h3><p>Please try again.</p></div>');
+                repoList.html('<div class="blankslate"><h3>Ooops!</h3><p>Please try again.</p>' + repos.message + '</div>');
                 return;
             }
             repos.result.forEach(function (repo) {
                 if (repo.fork) return;
                 count++;
 
-                // repo.path = repo.mode.charAt(0)=="d" ? repo.path : "#"
+                repo.type = repo.mode.charAt(0) == "d" ? "dir" : repo.type;
                 var date = new Date(repo.updateTime);
                 repo.updateTime = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDay();
 

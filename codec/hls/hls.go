@@ -13,17 +13,19 @@ import (
 	"path/filepath"
 )
 
-const hls string = "ffmpeg -i %s -c:v libx264 -codec:a mp3 -hls_time 10 -hls_list_size 0 %s";
+const (
+	hls string = "ffmpeg -i %s -c:v libx264 -c:a mp3 -hls_time 10 -hls_list_size 0 %s";
+)
 
 var (
 	VIDEO_SUFFIX = []string{".avi", ".mkv", ".mp4", ".rmvb", ".rm", ".flv", ".mov", ".vob", ".wmv", ".ts"}
-	sourceDir string = ""
-	targetDir string = ""
+	srcRootDir string = ""
+	dstRootDir string = ""
 )
 
 func Init(srcDir, dstDir string) {
-	sourceDir = srcDir
-	targetDir = dstDir
+	srcRootDir = srcDir
+	dstRootDir = dstDir
 }
 
 func IsVideo(ext string) bool {
@@ -39,7 +41,7 @@ func Transport(path string) (string, string) {
 	if path == "" {
 		return "", "'path' must not be null"
 	}
-	f, err := os.Stat(sourceDir + "/" + path)
+	f, err := os.Stat(srcRootDir + "/" + path)
 	if err != nil || f.IsDir() {
 		return "", "Can't handle folder"
 	}
@@ -51,7 +53,7 @@ func Transport(path string) (string, string) {
 	md := md5.New().Sum([]byte(path))
 	key := hex.EncodeToString(md);
 
-	os.MkdirAll(targetDir + "/" + key, 0777)
+	os.MkdirAll(dstRootDir + "/" + key, 0777)
 
 	index := strings.LastIndex(path, "/")
 	dot := strings.LastIndex(path, ".")
@@ -63,18 +65,21 @@ func Transport(path string) (string, string) {
 	}
 	hlsPath := "/" + key + "/" + filename + ".m3u8"
 
-	if isExists(targetDir + "/" + key + "/success") {
+	if isExists(dstRootDir + "/" + key + "/success") {
 		log.Println("already exists")
 		return hlsPath, "already exists"
 	}
 
+	lockFile := dstRootDir + "/" + key + "/success"
+	ioutil.WriteFile(lockFile, []byte("success"), 0666)
 	go func() {
 		beginTime := time.Now().Unix()
-		status := execute(fmt.Sprintf(hls, sourceDir + "/" + path, targetDir + hlsPath))
-		if status == 1 {
-			ioutil.WriteFile(targetDir + "/" + key + "/success", []byte("success"), 0666)
-			log.Println("transcode success")
+		status := execute(fmt.Sprintf(hls, srcRootDir + "/" + path, dstRootDir + hlsPath))
+		if !status {
+			execute("rm -rf " + lockFile)
+			return
 		}
+		log.Println("transcode success")
 		total := time.Now().Unix() - beginTime;
 		log.Println("used", total, "s")
 	}()
@@ -82,16 +87,15 @@ func Transport(path string) (string, string) {
 	return hlsPath, "transcoding"
 }
 
-func execute(command string) int {
+func execute(command string) bool {
 	log.Println(command)
 	cmd := exec.Command("/bin/sh", "-c", command)
-	buff, err := cmd.Output();
+	_, err := cmd.Output();
 	if err != nil {
 		log.Println(err)
-		return -1
+		return false
 	}
-	log.Println(string(buff))
-	return 1
+	return true
 }
 
 func isExists(path string) bool {
