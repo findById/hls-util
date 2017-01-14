@@ -47,7 +47,7 @@
         if (type == "dir") {
             listDir(path);
         } else if (type == "mp4" || type == "avi" || type == "mkv" || type == "rmvb") {
-            getPlayList(path)
+            prompt("Play", "http://192.168.99.89:8085/" + path);
         } else {
             alert("Unsupported file type.")
         }
