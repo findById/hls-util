@@ -12,12 +12,16 @@ import (
 	"time"
 	"hls-util/codec/hls"
 	"strings"
+	"io/ioutil"
+	"bufio"
 )
 
 var (
 	port = flag.String("port", "9090", "listen port")
 	sourceDir = flag.String("sourceDir", "", "source directory")
 	targetDir = flag.String("targetDir", "", "target directory")
+	confFile = flag.String("conf", "main.conf", "filter config")
+	mediaType []string
 )
 
 func main() {
@@ -29,6 +33,20 @@ func main() {
 	}
 
 	log.Println("port:[", *port, "], srcDir:[", *sourceDir, "], dstDir:[", *targetDir, "]")
+
+	buf, err := ioutil.ReadFile(*confFile)
+	if err == nil {
+		br := bufio.NewReader(strings.NewReader(string(buf)))
+		for {
+			temp, _, err := br.ReadLine()
+			if err != nil {
+				break
+			}
+			line := string(temp)
+			mediaType = append(mediaType, line)
+
+		}
+	}
 
 	hls.Init(*sourceDir, *targetDir)
 
@@ -84,7 +102,33 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	log.Println("list path", path)
 	list, err := exp.ListDir(*sourceDir + string(os.PathSeparator) + path)
 
-	for i, item := range list {
+	result := make([]exp.MediaItem, 0)
+
+	for _, item := range list {
+
+		if mediaType != nil && len(mediaType) > 0 {
+			isAvailable := false;
+			for _, t := range mediaType {
+				if strings.HasSuffix(strings.ToLower(item.Name), strings.ToLower(t)) &&
+					strings.HasPrefix(strings.ToLower(item.Mode), "-") {
+					isAvailable = true;
+					break
+				}
+			}
+			if (isAvailable || strings.HasPrefix(strings.ToLower(item.Mode), "d")) {
+				re := item.Path[len(*sourceDir):]
+				md := md5.New().Sum([]byte(re))
+				key := hex.EncodeToString(md);
+
+				item.Id = key
+				item.Path = re
+
+				// list[i] = item
+				result = append(result, item)
+				continue
+			}
+			continue
+		}
 
 		re := item.Path[len(*sourceDir):]
 		md := md5.New().Sum([]byte(re))
@@ -93,13 +137,14 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		item.Id = key
 		item.Path = re
 
-		list[i] = item
+		// list[i] = item
+		result = append(result, item)
 	}
 
 	w.Header().Add("content-type", "application/json;charset=utf-8")
 
 	model := make(map[string]interface{})
-	model["result"] = list
+	model["result"] = result
 	if err != nil {
 		model["statusCode"] = 201
 		model["message"] = err.Error()

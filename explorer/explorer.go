@@ -36,6 +36,7 @@ func ListDir(path string) ([]MediaItem, error) {
 		}
 		item.Name = f.Name()
 		item.Mode = f.Mode().String()
+		item.Size = f.Size()
 
 		index := strings.LastIndex(item.Name, ".");
 		if index > 0 && index < len(item.Name) && !f.IsDir() {
